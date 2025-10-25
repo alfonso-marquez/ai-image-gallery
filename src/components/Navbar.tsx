@@ -42,7 +42,7 @@ export function Navbar({ user }: NavbarProps) {
     return (
         <div className="fixed top-0 left-0 w-full z-50 bg-background/90 backdrop-blur-sm shadow-md">
             <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-                <div className="text-md font-bold">AI Image Gallery</div>
+                <div className="text-md font-bold hidden md:block">AI Image Gallery</div>
                 <NavigationMenu viewport={false}>
                     <NavigationMenuList>
                         <NavigationMenuItem>
