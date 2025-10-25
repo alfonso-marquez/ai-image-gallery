@@ -194,6 +194,9 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     clearInterval(progressInterval);
     setProgress(100);
 
+    // Show 100% completion for a moment before transitioning
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     const responseErrors = responses.filter((x) => x.message !== undefined) as {
       name: string;
       message: string;
