@@ -91,15 +91,15 @@ const DropzoneContent = ({ className }: { className?: string }) => {
 
   if (isSuccess) {
     return (
-      <div className={cn('flex flex-col items-center gap-y-2', className)}>
-        <div className={cn('flex flex-row items-center gap-x-2 justify-center', className)}>
+      <div className={cn('flex flex-col items-center justify-center gap-y-4', className)}>
+        <div className={cn('flex flex-row items-center gap-x-2', className)}>
           <CheckCircle size={16} className="text-primary" />
-          <p className="text-primary text-sm">
-            Successfully uploaded {files.length} file{files.length > 1 ? 's' : ''}
-          </p>
+          <h1 className="text-primary text-md">
+            Successfully uploaded {files.length} image{files.length > 1 ? 's' : ''}
+          </h1>
         </div>
-        <Button variant="outline" size="sm" onClick={handleReset}>
-          Upload more
+        <Button variant="outline" size="lg" onClick={handleReset}>
+          Upload More
         </Button>
       </div>
     )

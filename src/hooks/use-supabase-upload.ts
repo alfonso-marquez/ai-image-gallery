@@ -134,6 +134,9 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
   });
 
   const onUpload = useCallback(async () => {
+    setLoading(true);
+    setProgress(0);
+
     const supabase = createClient();
     const {
       data: { user },
@@ -141,10 +144,9 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      setLoading(false);
       return;
     }
-    setLoading(true);
-    setProgress(0);
 
     // [Joshen] This is to support handling partial successes
     // If any files didn't upload for any reason, hitting "Upload" again will only upload the files that had errors
@@ -160,6 +162,15 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     const total = filesToUpload.length || 1;
     let completed = 0;
 
+    // Simulated progress for smoother UX
+    let simulatedProgress = 0;
+    const progressInterval = setInterval(() => {
+      simulatedProgress += Math.random() * 15;
+      if (simulatedProgress < 90) {
+        setProgress(Math.min(90, Math.round(simulatedProgress)));
+      }
+    }, 300);
+
     const uploadSingle = async (file: FileWithPreview): Promise<UploadResp> => {
       const fileExt = file.name.split(".").pop();
       const uniqueFileName = `${uuidv4()}.${fileExt}`;
@@ -171,7 +182,6 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
           upsert,
         });
       completed += 1;
-      setProgress(Math.min(100, Math.round((completed / total) * 100)));
       return error
         ? { name: file.name, message: error.message }
         : { name: file.name, path: filePath };
@@ -180,6 +190,9 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     const responses: UploadResp[] = await Promise.all(
       filesToUpload.map(uploadSingle)
     );
+
+    clearInterval(progressInterval);
+    setProgress(100);
 
     const responseErrors = responses.filter((x) => x.message !== undefined) as {
       name: string;
@@ -206,9 +219,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     setUploadedPaths(pathMap);
 
     setLoading(false);
-    setProgress(100);
-  }, [files, path, bucketName, errors, successes]);
-
+  }, [files, path, bucketName, errors, successes, uploadedPaths]);
   useEffect(() => {
     if (files.length === 0) {
       setErrors([]);
