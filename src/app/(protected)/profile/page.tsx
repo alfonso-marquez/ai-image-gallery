@@ -20,49 +20,49 @@ export default async function ProfilePage() {
                     <p className="text-sm text-muted-foreground mt-1">View your account information</p>
                 </div>
 
-            <Card className="p-6">
-                <div className="space-y-6">
-                    {/* Email */}
-                    <div>
-                        <label className="text-sm font-medium text-muted-foreground">Email</label>
-                        <p className="mt-1 text-base">{user.email}</p>
-                    </div>
-
-                    {/* First Name */}
-                    {user.user_metadata?.first_name && (
+                <Card className="p-6">
+                    <div className="space-y-6">
+                        {/* Email */}
                         <div>
-                            <label className="text-sm font-medium text-muted-foreground">First Name</label>
-                            <p className="mt-1 text-base">{user.user_metadata.first_name}</p>
+                            <label className="text-sm font-medium text-muted-foreground">Email</label>
+                            <p className="mt-1 text-base">{user.email}</p>
                         </div>
-                    )}
 
-                    {/* Last Name */}
-                    {user.user_metadata?.last_name && (
+                        {/* First Name */}
+                        {user.user_metadata?.first_name && (
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground">First Name</label>
+                                <p className="mt-1 text-base">{user.user_metadata.first_name}</p>
+                            </div>
+                        )}
+
+                        {/* Last Name */}
+                        {user.user_metadata?.last_name && (
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground">Last Name</label>
+                                <p className="mt-1 text-base">{user.user_metadata.last_name}</p>
+                            </div>
+                        )}
+
+                        {/* User ID */}
                         <div>
-                            <label className="text-sm font-medium text-muted-foreground">Last Name</label>
-                            <p className="mt-1 text-base">{user.user_metadata.last_name}</p>
+                            <label className="text-sm font-medium text-muted-foreground">User ID</label>
+                            <p className="mt-1 text-sm font-mono text-muted-foreground break-all">{user.id}</p>
                         </div>
-                    )}
 
-                    {/* User ID */}
-                    <div>
-                        <label className="text-sm font-medium text-muted-foreground">User ID</label>
-                        <p className="mt-1 text-sm font-mono text-muted-foreground break-all">{user.id}</p>
+                        {/* Created At */}
+                        <div>
+                            <label className="text-sm font-medium text-muted-foreground">Member Since</label>
+                            <p className="mt-1 text-base">
+                                {new Date(user.created_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                })}
+                            </p>
+                        </div>
                     </div>
-
-                    {/* Created At */}
-                    <div>
-                        <label className="text-sm font-medium text-muted-foreground">Member Since</label>
-                        <p className="mt-1 text-base">
-                            {new Date(user.created_at).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            })}
-                        </p>
-                    </div>
-                </div>
-            </Card>
+                </Card>
             </div>
         </main>
     );
