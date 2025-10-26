@@ -5,11 +5,23 @@ const getImages = async (id: string) => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("images")
-    .select()
+    .select(
+      `
+      *,
+      metadata:image_metadata(*)
+    `
+    )
     .eq("user_id", id)
     .order("uploaded_at", { ascending: false });
   if (error) throw new Error(error?.message || "Failed to fetch images");
-  return data || []; // always return array, safe for UI
+
+  // Transform the data to match our Image type (metadata is an array, we want single object)
+  const transformedData = data?.map((image) => ({
+    ...image,
+    metadata: image.metadata?.[0] || null,
+  }));
+
+  return transformedData || []; // always return array, safe for UI
 };
 
 // GET single image by id
@@ -83,7 +95,75 @@ const deleteImage = async (id: number) => {
   return data || []; // return array of deleted images
 };
 
-export { getImages, getImage, createImage, updateImage, deleteImage };
+// === Image Metadata Functions ===
+
+const createMetadata = async (
+  imageId: number,
+  userId: string,
+  description: string,
+  tags: string[],
+  colors: string[],
+  status: string = "completed"
+) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("image_metadata")
+    .insert({
+      image_id: imageId,
+      user_id: userId,
+      description,
+      tags,
+      colors,
+      ai_processing_status: status,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error?.message || "Failed to create metadata");
+  return data;
+};
+
+const getMetadata = async (imageId: number) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("image_metadata")
+    .select()
+    .eq("image_id", imageId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null; // No metadata found
+    }
+    throw new Error(error?.message || "Failed to fetch metadata");
+  }
+  return data;
+};
+
+const updateMetadataStatus = async (imageId: number, status: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("image_metadata")
+    .update({ ai_processing_status: status })
+    .eq("image_id", imageId)
+    .select()
+    .single();
+
+  if (error)
+    throw new Error(error?.message || "Failed to update metadata status");
+  return data;
+};
+
+export {
+  getImages,
+  getImage,
+  createImage,
+  updateImage,
+  deleteImage,
+  createMetadata,
+  getMetadata,
+  updateMetadataStatus,
+};
 
 export type Image = {
   id: string;

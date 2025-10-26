@@ -1,8 +1,8 @@
 import { getImages, createImage, updateImage, deleteImage } from "@/lib/images";
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const GET = async () => {
+const GET = async (request: NextRequest) => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,6 +13,27 @@ const GET = async () => {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   try {
+    const idParam = request.nextUrl.searchParams.get("id");
+    if (idParam) {
+      // Fetch a single image with joined metadata
+      const { data, error } = await supabase
+        .from("images")
+        .select(
+          `
+          *,
+          metadata:image_metadata(*)
+        `
+        )
+        .eq("user_id", user.id)
+        .eq("id", Number(idParam))
+        .single();
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 404 });
+      }
+      const transformed = { ...data, metadata: data.metadata?.[0] || null };
+      return NextResponse.json([transformed], { status: 200 });
+    }
+
     const images = await getImages(user.id);
     return NextResponse.json(images, { status: 200 });
   } catch (error) {
