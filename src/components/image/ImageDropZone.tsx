@@ -109,10 +109,33 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
                         if (onImageCreated) {
                             onImageCreated(data);
                         }
+
+                        // Trigger AI analysis in background (non-blocking)
+                        fetch('/api/analyze-image', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                image_id: data.id,
+                                image_url: publicUrlData.publicUrl
+                            })
+                        })
+                            .then(async (response) => {
+                                if (!response.ok) {
+                                    const errorData = await response.json();
+                                    console.error('AI analysis API error:', response.status, errorData);
+                                } else {
+                                    const result = await response.json();
+                                    console.log('AI analysis completed:', result);
+                                }
+                            })
+                            .catch(err => {
+                                console.error('AI analysis request failed:', err);
+                                // Don't show error to user, as upload succeeded
+                            });
                     }
 
                     toast.success('Upload successful', {
-                        description: `${props.successes.length} image(s) uploaded successfully`,
+                        description: `${props.successes.length} image(s) uploaded successfully. AI analysis in progress...`,
                     });
                 } catch (err) {
                     toast.error('Failed to create image records', {

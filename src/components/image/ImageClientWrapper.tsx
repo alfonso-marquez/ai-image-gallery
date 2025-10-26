@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import ImageFormDialog from "./ImageFormDialog";
 import { useSupabaseUpload } from '@/hooks/use-supabase-upload'
 import ImageDropZone from "./ImageDropZone";
+
 export default function ImageClientWrapper({
   initialImages,
   errorMessage,
@@ -18,6 +19,7 @@ export default function ImageClientWrapper({
 }) {
   const [images, setImages] = useState<Image[]>(initialImages);
   const [loading, setLoading] = useState(false);
+  const [shouldPoll, setShouldPoll] = useState(false);
 
   const hasShownToast = useRef(false);
 
@@ -30,10 +32,39 @@ export default function ImageClientWrapper({
     }
   }, [errorMessage]);
 
+  // Poll for updates when there are processing images or right after creating a new one
+  useEffect(() => {
+    const hasProcessingImages = images.some(
+      img => img.metadata?.ai_processing_status === 'processing' ||
+        img.metadata?.ai_processing_status === 'pending'
+    );
+
+    const enablePolling = shouldPoll || hasProcessingImages;
+    if (!enablePolling) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/images');
+        if (res.ok) {
+          const updatedImages = await res.json();
+          setImages(updatedImages);
+          // After first successful refresh, we can let hasProcessingImages drive polling
+          if (shouldPoll) setShouldPoll(false);
+        }
+      } catch (error) {
+        console.error('Failed to refresh images:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [images, shouldPoll]);
+
   const handleImageCreated = (newImage: Image) => {
     setLoading(true);
     // Update albums state immutably
     setImages((prev) => [newImage, ...prev]);
+    // Start an initial polling cycle so the new image picks up its processing metadata without manual refresh
+    setShouldPoll(true);
     setLoading(false);
   };
 
@@ -52,7 +83,7 @@ export default function ImageClientWrapper({
         <h1 className="text-2xl md:text-3xl font-semibold">
           My Images
         </h1>
-        <p className="text-muted-foreground text-sm sm:text-base"> Upload and manage your images </p>
+        <p className="text-muted-foreground text-sm sm:text-base"> Uploaded Images will be analyzed by AI to generate descriptions, dominant colors, and tags.</p>
       </div>
       <div className="flex items-center justify-center px-6 mb-4">
         {/* <ImageFormDialog onImageCreate={handleImageCreated} /> */}

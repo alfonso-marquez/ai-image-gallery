@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card } from "../ui/card";
-import { Eye, MoreHorizontalIcon, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontalIcon, Trash2, Sparkles, AlertCircle } from "lucide-react";
 import Link from "next/link";
 // import EditFormDialog from "./EditFormDialog";
 import { Image as ImageType } from "./types";
 import Image from "next/image";
 import ImagePreviewDialog from "./ImagePreviewDialog";
+import { Spinner } from "../ui/spinner";
 // import ImageDeleteDialog from "./ImageDeleteDialog";
 // import EmptyState from "../EmptyState";
 
@@ -36,6 +37,51 @@ export default function ImageList({
 }: ImageListProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<ImageType | null>(null);
+
+  // Keep selected image in sync with latest props so preview updates without manual refresh
+  useEffect(() => {
+    if (!selectedImage) return;
+    const updated = images.find((img) => img.id === selectedImage.id);
+    if (updated && updated !== selectedImage) {
+      setSelectedImage(updated);
+    }
+  }, [images]);
+
+  const getAIStatusBadge = (status?: string) => {
+    if (!status || status === 'pending') {
+      return (
+        <div className="absolute top-2 left-2 bg-gray-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+          <Sparkles className="w-3 h-3" />
+          Pending
+        </div>
+      );
+    }
+    if (status === 'processing') {
+      return (
+        <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+          <Spinner className="w-3 h-3" />
+          AI Analyzing...
+        </div>
+      );
+    }
+    if (status === 'completed') {
+      return (
+        <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+          <Sparkles className="w-3 h-3" />
+          AI Complete
+        </div>
+      );
+    }
+    if (status === 'failed') {
+      return (
+        <div className="absolute top-2 left-2 bg-red-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />
+          AI Failed
+        </div>
+      );
+    }
+    return null;
+  };
 
   // if (!loading && images.length === 0) {
   //   return <EmptyState type="photo" />;
@@ -102,6 +148,7 @@ export default function ImageList({
               </div>
 
               <div className="w-full h-0 pb-[100%] relative rounded-md overflow-hidden">
+                {getAIStatusBadge(photo.metadata?.ai_processing_status)}
                 <button
                   type="button"
                   onClick={() => {
