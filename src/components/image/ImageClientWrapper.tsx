@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// import ImageFormDialog from "./ImageFormDialog";
 import ImageList from "./ImageList";
 import { Card, CardContent } from "@/components/ui/card";
 import { Image } from "./types";
 import { toast } from "sonner";
-import ImageFormDialog from "./ImageFormDialog";
-import { useSupabaseUpload } from '@/hooks/use-supabase-upload'
 import ImageDropZone from "./ImageDropZone";
 
 export default function ImageClientWrapper({
@@ -83,7 +80,7 @@ export default function ImageClientWrapper({
         <h1 className="text-2xl md:text-3xl font-semibold">
           My Images
         </h1>
-        <p className="text-muted-foreground text-sm sm:text-base"> Uploaded Images will be analyzed by AI to generate descriptions, dominant colors, and tags.</p>
+        <p className="text-muted-foreground text-sm sm:text-base"> Uploaded Images will be analyzed by AI to generate descriptions, tags, and dominant colors.</p>
       </div>
       <div className="flex items-center justify-center px-6 mb-4">
         {/* <ImageFormDialog onImageCreate={handleImageCreated} /> */}
