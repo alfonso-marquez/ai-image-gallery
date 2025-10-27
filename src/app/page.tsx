@@ -29,9 +29,11 @@ export default async function Home() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/gallery">Open your gallery</Link>
-            </Button>
+            {user && (
+              <Button asChild size="lg">
+                <Link href="/gallery">Open your gallery</Link>
+              </Button>
+            )}
             {user ? (
               <Button asChild size="lg" variant="outline">
                 <Link href="/profile">View profile</Link>
