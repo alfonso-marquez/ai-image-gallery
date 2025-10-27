@@ -32,7 +32,7 @@ export default async function GalleryPage() {
       <div className="mx-auto my-30 w-full max-w-6xl">
         <ImageClientWrapper
           initialImages={images || []}
-          errorMessage={errorMessage}
+          errorMessage={errorMessage || null}
         />
       </div>
     </div>
