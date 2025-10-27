@@ -14,6 +14,10 @@ const GET = async (request: NextRequest) => {
   }
   try {
     const idParam = request.nextUrl.searchParams.get("id");
+    const q = request.nextUrl.searchParams.get("q")?.trim() || "";
+    const color = request.nextUrl.searchParams.get("color")?.trim() || "";
+    const similarTo =
+      request.nextUrl.searchParams.get("similarTo")?.trim() || "";
     if (idParam) {
       // Fetch a single image with joined metadata
       const { data, error } = await supabase
@@ -22,7 +26,7 @@ const GET = async (request: NextRequest) => {
           `
           *,
           metadata:image_metadata(*)
-        `
+        `,
         )
         .eq("user_id", user.id)
         .eq("id", Number(idParam))
@@ -35,77 +39,96 @@ const GET = async (request: NextRequest) => {
     }
 
     const images = await getImages(user.id);
+
+    // 1) Text search by q
+    if (q) {
+      const lower = q.toLowerCase();
+      const filtered = images.filter((img: any) => {
+        const desc = (img.metadata?.description || "").toLowerCase();
+        const fname = (
+          (img.filename ?? img.name ?? "") as string
+        ).toLowerCase();
+        const tagMatch = Array.isArray(img.metadata?.tags)
+          ? img.metadata.tags.some((t: string) =>
+              t?.toLowerCase().includes(lower),
+            )
+          : false;
+        const nameMatch = fname.includes(lower);
+        return desc.includes(lower) || tagMatch || nameMatch;
+      });
+      return NextResponse.json(filtered, { status: 200 });
+    }
+
+    // 2) Filter by exact color hex (case-insensitive), allow with/without '#'
+    if (color) {
+      const norm = color.startsWith("#")
+        ? color.toLowerCase()
+        : `#${color.toLowerCase()}`;
+      const colorFiltered = images.filter((img: any) => {
+        const cols: string[] = img.metadata?.colors || [];
+        return cols.some((c: string) => (c || "").toLowerCase() === norm);
+      });
+      return NextResponse.json(colorFiltered, { status: 200 });
+    }
+
+    // 3) Similar images by tags/colors/description for a given image id
+    if (similarTo) {
+      const targetId = Number(similarTo);
+      const target = images.find((img: any) => Number(img.id) === targetId);
+      if (!target) {
+        return NextResponse.json([], { status: 200 });
+      }
+
+      const targetTags = new Set<string>(
+        (target.metadata?.tags as string[]) || [],
+      );
+      const targetDesc = (target.metadata?.description || "").toLowerCase();
+      const targetWords = new Set<string>(
+        targetDesc.split(/\s+/).filter((w: string) => w.length > 3),
+      );
+
+      const jaccard = (a: Set<string>, b: Set<string>) => {
+        if (a.size === 0 && b.size === 0) return 0;
+        let inter = 0;
+        for (const v of a) if (b.has(v)) inter++;
+        const union = a.size + b.size - inter;
+        return union === 0 ? 0 : inter / union;
+      };
+
+      const scored = images
+        .filter((img: any) => Number(img.id) !== targetId)
+        .map((img: any) => {
+          const tags = new Set<string>((img.metadata?.tags as string[]) || []);
+          const desc = (img.metadata?.description || "").toLowerCase();
+          const words = new Set<string>(
+            desc.split(/\s+/).filter((w: string) => w.length > 3),
+          );
+
+          const tagScore = jaccard(targetTags, tags);
+          const descScore = jaccard(targetWords, words);
+
+          // Weighted: 90% tags, 10% description - heavily favor Rekognition labels
+          const score = 0.9 * tagScore + 0.1 * descScore;
+          return { img, score };
+        })
+        .sort((a: any, b: any) => b.score - a.score)
+        .filter((s: any) => s.score > 0.1); // Require minimum 10% similarity
+
+      return NextResponse.json(
+        scored.map((s: any) => s.img),
+        { status: 200 },
+      );
+    }
+
+    // Default: return all
     return NextResponse.json(images, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };
-
-// POST - create a new image (authenticated)
-// const POST = async (req: Request) => {
-//   const supabase = await createClient();
-//   const {
-//     data: { user },
-//     error: userError,
-//   } = await supabase.auth.getUser();
-
-//   if (userError || !user) {
-//     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-//   }
-
-//   const formData = await req.formData();
-
-//   const bucket = process.env.NEXT_PUBLIC_SUPABASE_BUCKET!;
-//   const file = formData.get("file") as File;
-//   const filename = formData.get("filename") as string; // 👈 user-provided name
-
-//   if (!file || !filename || !user) {
-//     return NextResponse.json(
-//       { error: "Missing required fields" },
-//       { status: 400 }
-//     );
-//   }
-
-//   // Generate a unique file path for storage
-//   const fileExt = file.name.split(".").pop();
-//   const uniqueFileName = `${uuidv4()}.${fileExt}`;
-//   const filePath = `${user.id}/originals/${uniqueFileName}`;
-
-//   // 1️⃣ Upload file to Supabase Storage
-//   const { error: uploadError } = await supabase.storage
-//     .from(bucket)
-//     .upload(filePath, file, { upsert: false });
-
-//   if (uploadError) {
-//     return NextResponse.json({ error: uploadError.message }, { status: 500 });
-//   }
-
-//   // 2️⃣ Get public URL
-//   const { data: publicUrlData } = supabase.storage
-//     .from(bucket)
-//     .getPublicUrl(filePath);
-
-//   // 3️⃣ Insert into images table
-//   try {
-//     const data = await createImage(filename, publicUrlData.publicUrl, user.id);
-//     console.log("API Route:", data);
-//     return NextResponse.json(data, { status: 200 });
-//   } catch (error) {
-//     return NextResponse.json(
-//       { error: error instanceof Error ? error.message : "Unknown error" },
-//       { status: 500 }
-//     );
-//   }
-
-//   // return NextResponse.json({
-//   //   success: true,
-//   //   image,
-//   //   publicUrl: publicUrlData.publicUrl, // optional convenience
-//   // });
-// };
 
 const POST = async (req: Request) => {
   const supabase = await createClient();
@@ -124,7 +147,7 @@ const POST = async (req: Request) => {
   if (!filename || !original_path) {
     return NextResponse.json(
       { error: "Missing required fields: filename and original_path" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -134,14 +157,14 @@ const POST = async (req: Request) => {
       filename,
       original_path,
       user.id,
-      thumbnail_path
+      thumbnail_path,
     );
     console.log("API Route:", data);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };
@@ -166,7 +189,7 @@ const PATCH = async (req: Request) => {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };
@@ -187,7 +210,7 @@ const DELETE = async (req: Request) => {
   if (!id)
     return NextResponse.json(
       { error: "Image id is required" },
-      { status: 400 }
+      { status: 400 },
     );
 
   try {
@@ -196,7 +219,7 @@ const DELETE = async (req: Request) => {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 };

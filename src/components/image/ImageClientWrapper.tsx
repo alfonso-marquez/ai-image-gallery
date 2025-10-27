@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ImageList from "./ImageList";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Image } from "./types";
 import { toast } from "sonner";
 import ImageDropZone from "./ImageDropZone";
@@ -17,6 +26,14 @@ export default function ImageClientWrapper({
   const [images, setImages] = useState<Image[]>(initialImages);
   const [loading, setLoading] = useState(false);
   const [shouldPoll, setShouldPoll] = useState(false);
+  const [query, setQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<
+    | { type: "color"; value: string }
+    | { type: "similar"; value: string | number }
+    | null
+  >(null);
 
   const hasShownToast = useRef(false);
 
@@ -32,16 +49,21 @@ export default function ImageClientWrapper({
   // Poll for updates when there are processing images or right after creating a new one
   useEffect(() => {
     const hasProcessingImages = images.some(
-      img => img.metadata?.ai_processing_status === 'processing' ||
-        img.metadata?.ai_processing_status === 'pending'
+      (img) =>
+        img.metadata?.ai_processing_status === "processing" ||
+        img.metadata?.ai_processing_status === "pending",
     );
 
-    const enablePolling = shouldPoll || hasProcessingImages;
+    // Disable polling while searching (results are filtered client-side request)
+    const enablePolling =
+      (shouldPoll || hasProcessingImages) &&
+      query.trim().length === 0 &&
+      activeFilter === null;
     if (!enablePolling) return;
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/images');
+        const res = await fetch("/api/images");
         if (res.ok) {
           const updatedImages = await res.json();
           setImages(updatedImages);
@@ -49,12 +71,101 @@ export default function ImageClientWrapper({
           if (shouldPoll) setShouldPoll(false);
         }
       } catch (error) {
-        console.error('Failed to refresh images:', error);
+        console.error("Failed to refresh images:", error);
       }
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(interval);
-  }, [images, shouldPoll]);
+  }, [images, shouldPoll, query, activeFilter]);
+
+  // Debounced instant search
+  useEffect(() => {
+    const q = query.trim();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // If a color/similar filter is active and the query is empty, don't fetch base images.
+    if (q.length === 0 && activeFilter) {
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        // Clear any active filter when typing a query
+        if (q.length > 0 && activeFilter) setActiveFilter(null);
+        const url =
+          q.length > 0
+            ? `/api/images?q=${encodeURIComponent(q)}`
+            : "/api/images";
+        const res = await fetch(url);
+        if (res.ok) {
+          const list = await res.json();
+          setImages(list);
+        }
+      } catch (e) {
+        console.error("Search failed", e);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, activeFilter]);
+
+  // Handlers: find similar and filter by color
+  const handleFindSimilar = async (imageId: number | string) => {
+    try {
+      setIsSearching(true);
+      setActiveFilter({ type: "similar", value: imageId });
+      setQuery("");
+      const res = await fetch(
+        `/api/images?similarTo=${encodeURIComponent(String(imageId))}`,
+      );
+      if (res.ok) {
+        const list = await res.json();
+        setImages(list);
+      }
+    } catch (e) {
+      console.error("Find similar failed", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleFilterByColor = async (hex: string) => {
+    try {
+      setIsSearching(true);
+      setActiveFilter({ type: "color", value: hex });
+      setQuery("");
+      const res = await fetch(`/api/images?color=${encodeURIComponent(hex)}`);
+      if (res.ok) {
+        const list = await res.json();
+        setImages(list);
+      }
+    } catch (e) {
+      console.error("Color filter failed", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearFilters = async () => {
+    try {
+      setIsSearching(true);
+      setActiveFilter(null);
+      setQuery(""); // clear search query as well
+      const res = await fetch("/api/images");
+      if (res.ok) {
+        const list = await res.json();
+        setImages(list);
+      }
+      setShouldPoll(true); // resume polling if needed
+    } catch (e) {
+      console.error("Reset filters failed", e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleImageCreated = (newImage: Image) => {
     setLoading(true);
@@ -75,12 +186,13 @@ export default function ImageClientWrapper({
 
   return (
     <Card>
-
       <div className="p-6 pb-0 mb-4">
-        <h1 className="text-2xl md:text-3xl font-semibold">
-          My Images
-        </h1>
-        <p className="text-muted-foreground text-sm sm:text-base"> Uploaded Images will be analyzed by AI to generate descriptions, tags, and dominant colors.</p>
+        <h1 className="text-2xl md:text-3xl font-semibold">My Images</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
+          {" "}
+          Uploaded Images will be analyzed by AI to generate descriptions, tags,
+          and dominant colors.
+        </p>
       </div>
       <div className="flex items-center justify-center px-6 mb-4">
         {/* <ImageFormDialog onImageCreate={handleImageCreated} /> */}
@@ -88,12 +200,105 @@ export default function ImageClientWrapper({
           <ImageDropZone onImageCreated={handleImageCreated} />
         </div>
       </div>
+      {activeFilter?.type === "similar" && (
+        <div className="px-6 mb-3 flex items-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-2 rounded-md border px-2 py-1">
+            <span>Similar to:</span>
+            {(() => {
+              const targetImage = initialImages.find(
+                (img) => String(img.id) === String(activeFilter.value),
+              );
+              return targetImage ? (
+                <span className="inline-flex items-center gap-2">
+                  <img
+                    src={
+                      targetImage.thumbnail_path || targetImage.original_path
+                    }
+                    alt={targetImage.filename}
+                    className="w-8 h-8 rounded object-cover border"
+                  />
+                  <span className="font-medium">{targetImage.filename}</span>
+                </span>
+              ) : (
+                <span>#{String(activeFilter.value)}</span>
+              );
+            })()}
+          </span>
+          <Button variant="outline" size="sm" onClick={handleClearFilters}>
+            Clear
+          </Button>
+        </div>
+      )}
+      {/* Search + Color filter row */}
+      <div className="px-6 mb-4 flex items-center gap-3">
+        <Input
+          className="flex-1"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by tag, description, or filename…"
+        />
+        {/* Color select (shadcn) derived from current images */}
+        <Select
+          value={
+            activeFilter?.type === "color"
+              ? String(activeFilter.value)
+              : "__clear__"
+          }
+          onValueChange={(val: string) => {
+            if (val === "__clear__") {
+              handleClearFilters();
+            } else {
+              handleFilterByColor(val);
+            }
+          }}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filter by color" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__clear__">All colors</SelectItem>
+            {useMemo(() => {
+              const freq = new Map<string, number>();
+              images.forEach((img) => {
+                const arr = (img.metadata?.colors as string[]) || [];
+                arr.forEach((raw) => {
+                  const norm = (raw || "").toLowerCase();
+                  if (!norm) return;
+                  const hex = norm.startsWith("#") ? norm : `#${norm}`;
+                  freq.set(hex, (freq.get(hex) || 0) + 1);
+                });
+              });
+              return Array.from(freq.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 24)
+                .map(([hex]) => hex);
+            }, [images]).map((hex) => (
+              <SelectItem key={hex} value={hex}>
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="w-3 h-3 rounded-sm border"
+                    style={{ background: hex }}
+                  />
+                  <span className="font-mono">{hex}</span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={handleClearFilters}>
+          Clear
+        </Button>
+      </div>
       <CardContent>
         <ImageList
           images={images}
           loading={loading}
+          isSearching={isSearching}
+          activeFilter={activeFilter}
           onImageEdit={handleImageEdit}
           onImageDelete={handleImageDelete}
+          onFindSimilar={handleFindSimilar}
+          onFilterByColor={handleFilterByColor}
         />
       </CardContent>
     </Card>
