@@ -46,7 +46,7 @@ export default function ImageList({
     }
   }, [images, selectedImage]);
 
-  const getAIStatusBadge = (status?: string) => {
+  const getAIStatusBadge = (imageId: string, status?: string) => {
     if (!status || status === "pending") {
       return (
         <div className="absolute top-2 left-2 bg-gray-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
@@ -60,14 +60,6 @@ export default function ImageList({
         <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
           <Spinner className="w-3 h-3" />
           AI Analyzing...
-        </div>
-      );
-    }
-    if (status === "completed") {
-      return (
-        <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1">
-          <Sparkles className="w-3 h-3" />
-          AI Complete
         </div>
       );
     }
@@ -155,7 +147,7 @@ export default function ImageList({
                 className="border rounded-md flex flex-col items-center justify-between px-4 w-full aspect-square relative"
               >
                 <div className="w-full h-0 pb-[100%] relative rounded-md overflow-hidden">
-                  {getAIStatusBadge(photo.metadata?.ai_processing_status)}
+                  {getAIStatusBadge(photo.id, photo.metadata?.ai_processing_status)}
                   <button
                     type="button"
                     onClick={() => {

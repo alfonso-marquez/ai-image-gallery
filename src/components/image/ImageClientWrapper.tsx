@@ -35,6 +35,7 @@ export default function ImageClientWrapper({
     | { type: "similar"; value: string | number }
     | null
   >(null);
+  const [similarTargetImage, setSimilarTargetImage] = useState<ImageType | null>(null);
 
   const hasShownToast = useRef(false);
 
@@ -117,6 +118,9 @@ export default function ImageClientWrapper({
   const handleFindSimilar = async (imageId: number | string) => {
     try {
       setIsSearching(true);
+      // Store the target image before filtering
+      const targetImg = images.find((img) => String(img.id) === String(imageId));
+      setSimilarTargetImage(targetImg || null);
       setActiveFilter({ type: "similar", value: imageId });
       setQuery("");
       const res = await fetch(
@@ -154,6 +158,7 @@ export default function ImageClientWrapper({
     try {
       setIsSearching(true);
       setActiveFilter(null);
+      setSimilarTargetImage(null);
       setQuery(""); // clear search query as well
       const res = await fetch("/api/images");
       if (res.ok) {
@@ -201,37 +206,6 @@ export default function ImageClientWrapper({
           <ImageDropZone onImageCreated={handleImageCreated} />
         </div>
       </div>
-      {activeFilter?.type === "similar" && (
-        <div className="px-6 mb-3 flex items-center gap-3 text-sm">
-          <span className="inline-flex items-center gap-2 rounded-md border px-2 py-1">
-            <span>Similar to:</span>
-            {(() => {
-              const targetImage = initialImages.find(
-                (img) => String(img.id) === String(activeFilter.value),
-              );
-              return targetImage ? (
-                <span className="inline-flex items-center gap-2">
-                  <Image
-                    src={
-                      targetImage.thumbnail_path || targetImage.original_path
-                    }
-                    alt={targetImage.filename}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 rounded object-cover border"
-                  />
-                  <span className="font-medium">{targetImage.filename}</span>
-                </span>
-              ) : (
-                <span>#{String(activeFilter.value)}</span>
-              );
-            })()}
-          </span>
-          <Button variant="outline" size="sm" onClick={handleClearFilters}>
-            Clear
-          </Button>
-        </div>
-      )}
       {/* Search + Color filter row */}
       <div className="px-6 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <Input
@@ -292,6 +266,32 @@ export default function ImageClientWrapper({
           Clear
         </Button>
       </div>
+      {activeFilter?.type === "similar" && (
+        <div className="px-6 mb-3 flex items-center gap-3 text-sm">
+          <span className="inline-flex items-center gap-2 rounded-md border px-2 py-1">
+            <span>Similar to:</span>
+            {similarTargetImage ? (
+              <span className="inline-flex items-center gap-2">
+                <Image
+                  src={
+                    similarTargetImage.thumbnail_path || similarTargetImage.original_path
+                  }
+                  alt={similarTargetImage.filename}
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded object-cover border"
+                />
+                <span className="font-medium">{similarTargetImage.filename}</span>
+              </span>
+            ) : (
+              <span>#{String(activeFilter.value)}</span>
+            )}
+          </span>
+          <Button variant="outline" size="sm" onClick={handleClearFilters}>
+            Clear
+          </Button>
+        </div>
+      )}
       <CardContent>
         <ImageList
           images={images}
