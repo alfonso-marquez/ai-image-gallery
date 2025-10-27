@@ -9,7 +9,7 @@ const getImages = async (id: string) => {
       `
       *,
       metadata:image_metadata(*)
-    `
+    `,
     )
     .eq("user_id", id)
     .order("uploaded_at", { ascending: false });
@@ -47,7 +47,7 @@ const createImage = async (
   filename: string,
   original_path: string,
   userId: string,
-  thumbnail_path?: string
+  thumbnail_path?: string,
 ) => {
   const supabase = await createClient();
 
@@ -75,7 +75,7 @@ const updateImage = async (id: number, name: string, description: string) => {
         id,
         url,
         created_at
-      )`
+      )`,
     )
     .single();
   if (error)
@@ -103,7 +103,7 @@ const createMetadata = async (
   description: string,
   tags: string[],
   colors: string[],
-  status: string = "completed"
+  status: string = "completed",
 ) => {
   const supabase = await createClient();
   const { data, error } = await supabase

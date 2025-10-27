@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     clearTimeout(t);
     const elapsed = Date.now() - started;
     const text = await res.text();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let json: any = undefined;
     try {
       json = JSON.parse(text);
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
       },
       { status: res.ok ? 200 : 502 }
     );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     const elapsed = Date.now() - started;
     return NextResponse.json(

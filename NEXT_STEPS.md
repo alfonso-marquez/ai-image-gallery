@@ -61,14 +61,12 @@ Ensure your AWS IAM user has:
 ## 🔍 How It Works
 
 1. **Upload Phase**
-
    - User uploads image
    - Stored in Supabase Storage
    - Image record created in DB
    - User sees success message immediately
 
 2. **AI Analysis (Background)**
-
    - Fetch image from Supabase Storage
    - Send to Rekognition for labels & colors
    - Use Bedrock Claude for description

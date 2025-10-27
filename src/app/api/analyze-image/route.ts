@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (!image_id || !image_url) {
       return NextResponse.json(
         { error: "image_id and image_url are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       if (existingMeta.ai_processing_status === "processing") {
         return NextResponse.json(
           { success: true, metadata: existingMeta, status: "processing" },
-          { status: 202 }
+          { status: 202 },
         );
       }
       // else 'failed' - we'll retry below and update the same row at the end
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       if (!countErr && typeof count === "number" && count >= DAILY_CAP) {
         return NextResponse.json(
           { error: "Daily analysis limit reached. Please try again tomorrow." },
-          { status: 429 }
+          { status: 429 },
         );
       }
     }
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
               ? rekognitionError.message
               : "Unknown error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       await updateMetadataStatus(image_id, "failed");
       return NextResponse.json(
         { error: "Failed to save analysis results" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to analyze image",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

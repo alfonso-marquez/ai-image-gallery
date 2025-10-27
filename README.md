@@ -31,7 +31,6 @@ Planned (not yet implemented):
 We split responsibilities by provider for best price/performance and simplicity:
 
 - Rekognition for tags/colors
-
   - Purpose-built, low cost per image, no prompts/tokens.
   - Provides ImageProperties with DominantColors and PixelPercent.
 
@@ -42,7 +41,6 @@ We split responsibilities by provider for best price/performance and simplicity:
 Alternatives considered
 
 - AWS Bedrock (Titan / Claude)
-
   - Pros: AWS-native, competitive cost (Titan), strong models (Claude).
   - Cons: Access gating/new-account delays; more IAM/config overhead.
   - Decision: keep as optional provider and fallback path.

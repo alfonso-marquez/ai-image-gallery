@@ -44,7 +44,9 @@ export async function GET() {
       ok: true,
       model,
       reply: text,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       finish_reason: (completion.choices?.[0] as any)?.finish_reason,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       usage: (completion as any)?.usage,
     });
   } catch (error) {

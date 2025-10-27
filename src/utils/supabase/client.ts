@@ -9,6 +9,6 @@ export function createClient() {
         persistSession: true,
         autoRefreshToken: true,
       },
-    }
+    },
   );
 }

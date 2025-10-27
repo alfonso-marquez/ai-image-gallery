@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       accessKeyPrefix: process.env.AWS_ACCESS_KEY_ID?.slice(0, 10),
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let requestBody: Record<string, any>;
 
     if (modelToTest.startsWith("anthropic.claude")) {
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
       callerIdentity: identity,
       response: responseBody,
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Bedrock test error:", error);
     return NextResponse.json(

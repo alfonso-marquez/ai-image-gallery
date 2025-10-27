@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/preserve-manual-memoization */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { createClient } from "@/lib/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -6,8 +8,6 @@ import {
   useDropzone,
 } from "react-dropzone";
 import { v4 as uuidv4 } from "uuid";
-
-const supabase = createClient();
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -159,8 +159,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
           ]
         : files;
     type UploadResp = { name: string; message?: string; path?: string };
-    const total = filesToUpload.length || 1;
-    let completed = 0;
+    // let completed = 0;
 
     // Simulated progress for smoother UX
     let simulatedProgress = 0;
@@ -181,7 +180,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
           cacheControl: cacheControl.toString(),
           upsert,
         });
-      completed += 1;
+      // completed += 1;
       return error
         ? { name: file.name, message: error.message }
         : { name: file.name, path: filePath };
@@ -195,7 +194,7 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     setProgress(100);
 
     // Show 100% completion for a moment before transitioning
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const responseErrors = responses.filter((x) => x.message !== undefined) as {
       name: string;
@@ -222,7 +221,18 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
     setUploadedPaths(pathMap);
 
     setLoading(false);
-  }, [files, path, bucketName, errors, successes, uploadedPaths]);
+  }, [
+    files,
+    path,
+    bucketName,
+    errors,
+    successes,
+    uploadedPaths,
+    cacheControl,
+    upsert,
+  ]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (files.length === 0) {
       setErrors([]);

@@ -24,8 +24,9 @@ export default async function Home() {
             Turn uploads into insights
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Upload photos and instantly get AI‑generated tags, a vivid two‑sentence description, and the top three
-            dominant colors. Background analysis with live status updates.
+            Upload photos and instantly get AI‑generated tags, a vivid
+            two‑sentence description, and the top three dominant colors.
+            Background analysis with live status updates.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -48,15 +49,21 @@ export default async function Home() {
         <div className="mx-auto mt-14 grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-lg border bg-background p-4 text-left">
             <p className="text-sm font-medium">Smart tags</p>
-            <p className="mt-1 text-sm text-muted-foreground">5–10 labels from Amazon Rekognition.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              5–10 labels from Amazon Rekognition.
+            </p>
           </div>
           <div className="rounded-lg border bg-background p-4 text-left">
             <p className="text-sm font-medium">Clean descriptions</p>
-            <p className="mt-1 text-sm text-muted-foreground">Two concise sentences via OpenAI/Bedrock.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Two concise sentences via OpenAI/Bedrock.
+            </p>
           </div>
           <div className="rounded-lg border bg-background p-4 text-left">
             <p className="text-sm font-medium">Dominant colors</p>
-            <p className="mt-1 text-sm text-muted-foreground">Top 3 hex colors.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Top 3 hex colors.
+            </p>
           </div>
         </div>
       </section>

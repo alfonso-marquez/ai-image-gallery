@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     if (!image_url) {
       return NextResponse.json(
         { error: "image_url required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         details: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
