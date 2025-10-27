@@ -1,6 +1,7 @@
 import {
   RekognitionClient,
   DetectLabelsCommand,
+  DetectTextCommand,
   type DetectLabelsCommandInput,
 } from "@aws-sdk/client-rekognition";
 import {
@@ -27,8 +28,57 @@ const bedrockClient = new BedrockRuntimeClient({
   },
 });
 
+function normalizeTag(name: string): string {
+  const s = name.trim();
+  const lower = s.toLowerCase();
+  const map: Record<string, string> = {
+    dish: "Food",
+    meal: "Food",
+    cuisine: "Food",
+    tableware: "Utensils",
+    human: "Person",
+  };
+  return map[lower] || s;
+}
+
+function includeParentTags(): boolean {
+  return (
+    (process.env.AI_INCLUDE_PARENT_TAGS ?? "true").toLowerCase() === "true"
+  );
+}
+
+function ocrEnabled(): boolean {
+  return (process.env.AI_OCR_ENABLED ?? "true").toLowerCase() === "true";
+}
+
+async function detectTextWords(buffer: Buffer): Promise<string[]> {
+  const minConf = Number(process.env.AI_MIN_CONFIDENCE ?? 80);
+  const cmd = new DetectTextCommand({ Image: { Bytes: buffer } });
+  const res = await rekognitionClient.send(cmd);
+  const words: string[] = [];
+  for (const det of res.TextDetections || []) {
+    if (
+      det.Type === "WORD" &&
+      (det.Confidence || 0) >= minConf &&
+      det.DetectedText
+    ) {
+      const w = det.DetectedText.trim();
+      // simple heuristics to avoid junk
+      if (/^[A-Za-z0-9][A-Za-z0-9\-\&\+\.]{1,30}$/.test(w)) {
+        words.push(w);
+      }
+    }
+  }
+  // Dedupe and cap
+  const unique = Array.from(new Set(words));
+  const maxWords = Number(process.env.AI_OCR_MAX_WORDS ?? 6);
+  return unique.slice(0, maxWords);
+}
+
 // Initialize OpenAI client (lazy, only if key is present)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let openaiClient: any | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getOpenAIClient(): Promise<any> {
   if (!openaiClient && process.env.OPENAI_API_KEY) {
     const { default: OpenAI } = await import("openai");
@@ -55,24 +105,44 @@ export async function analyzeImageWithRekognition(
   const maxLabels = Number(process.env.AI_MAX_LABELS ?? 10);
   const minConfidence = Number(process.env.AI_MIN_CONFIDENCE ?? 80);
 
-  // Fetch image
+  // Fetch image (frontend already limits to 5MB)
   const imageBuffer = await fetchImageAsBuffer(imageUrl);
 
   // Rekognition: Detect labels with IMAGE_PROPERTIES for colors
   const command = new DetectLabelsCommand({
     Image: { Bytes: imageBuffer },
-    MaxLabels: maxLabels,
+    MaxLabels: Math.max(maxLabels, 20),
     MinConfidence: minConfidence,
     Features: ["GENERAL_LABELS", "IMAGE_PROPERTIES"],
   });
 
   const response = await rekognitionClient.send(command);
 
-  // Extract tags
-  const tags = (response.Labels || [])
-    .filter((label) => (label.Confidence || 0) >= minConfidence)
-    .map((label) => label.Name || "")
-    .filter(Boolean)
+  // Extract tags, enriching with parent categories and optional OCR
+  const tagSet = new Set<string>();
+  for (const label of response.Labels || []) {
+    if ((label.Confidence || 0) < minConfidence) continue;
+    if (label.Name) tagSet.add(normalizeTag(label.Name));
+    if (includeParentTags() && label.Parents) {
+      for (const p of label.Parents) {
+        if (p?.Name) tagSet.add(normalizeTag(p.Name));
+      }
+    }
+  }
+  if (ocrEnabled()) {
+    try {
+      const words = await detectTextWords(imageBuffer);
+      for (const w of words) tagSet.add(w);
+    } catch (e) {
+      // OCR is best-effort; ignore failures
+      console.warn("OCR detectText failed:", e);
+    }
+  }
+  const excludePerson =
+    (process.env.AI_EXCLUDE_PERSON_FROM_TAGS ?? "false").toLowerCase() ===
+    "true";
+  const tags = Array.from(tagSet)
+    .filter((t) => (excludePerson ? t.toLowerCase() !== "person" : true))
     .slice(0, maxLabels);
 
   // Extract dominant colors
@@ -118,6 +188,7 @@ export async function generateDescriptionWithBedrock(
     ", "
   )}. Use natural language with visual and emotional details, as if writing for a photography exhibition.`;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let requestBody: Record<string, any>;
 
   if (modelId.startsWith("anthropic.claude")) {
@@ -191,6 +262,7 @@ export async function generateDescriptionWithOpenAI(
 
   const client = await getOpenAIClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const completion: any = await withTimeout(
     client.chat.completions.create({
       model,
@@ -202,6 +274,7 @@ export async function generateDescriptionWithOpenAI(
   );
 
   let description = completion.choices[0]?.message?.content?.trim() || "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finishReason = (completion.choices[0] as any)?.finish_reason;
 
   // If truncated (finish_reason === 'length') or ends without terminal punctuation, make a short continuation request
@@ -211,6 +284,7 @@ export async function generateDescriptionWithOpenAI(
   ) {
     try {
       const continuationPrompt = `Continue and finish the description in exactly one short sentence (under 18 words). Do not repeat earlier text. Finish the thought naturally.`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cont: any = await withTimeout(
         client.chat.completions.create({
           model,
@@ -253,6 +327,7 @@ export async function analyzeImage(
   imageBuffer: Buffer
 ): Promise<ImageAnalysisResult> {
   try {
+    // Frontend already limits to 5MB
     // Run Rekognition analysis in parallel
     const [labels, colors] = await Promise.all([
       detectLabels(imageBuffer),
@@ -277,10 +352,9 @@ export async function analyzeImage(
  * Detect labels (tags) using Amazon Rekognition
  */
 async function detectLabels(imageBuffer: Buffer): Promise<string[]> {
+  // Frontend already limits to 5MB
   const params: DetectLabelsCommandInput = {
-    Image: {
-      Bytes: imageBuffer,
-    },
+    Image: { Bytes: imageBuffer },
     MaxLabels: Number(process.env.AI_MAX_LABELS ?? 10),
     MinConfidence: Number(process.env.AI_MIN_CONFIDENCE ?? 80),
   };
@@ -288,8 +362,20 @@ async function detectLabels(imageBuffer: Buffer): Promise<string[]> {
   const command = new DetectLabelsCommand(params);
   const response = await rekognitionClient.send(command);
 
-  return (
-    response.Labels?.map((label) => label.Name || "").filter(Boolean) || []
+  const tagSet = new Set<string>();
+  for (const label of response.Labels || []) {
+    if (label.Name) tagSet.add(normalizeTag(label.Name));
+    if (includeParentTags() && label.Parents) {
+      for (const p of label.Parents) {
+        if (p?.Name) tagSet.add(normalizeTag(p.Name));
+      }
+    }
+  }
+  const excludePerson =
+    (process.env.AI_EXCLUDE_PERSON_FROM_TAGS ?? "false").toLowerCase() ===
+    "true";
+  return Array.from(tagSet).filter((t) =>
+    excludePerson ? t.toLowerCase() !== "person" : true
   );
 }
 
@@ -297,10 +383,9 @@ async function detectLabels(imageBuffer: Buffer): Promise<string[]> {
  * Extract dominant colors using Amazon Rekognition
  */
 async function extractDominantColors(imageBuffer: Buffer): Promise<string[]> {
+  // Frontend already limits to 5MB
   const params: DetectLabelsCommandInput = {
-    Image: {
-      Bytes: imageBuffer,
-    },
+    Image: { Bytes: imageBuffer },
     Features: ["IMAGE_PROPERTIES"],
   };
 
@@ -346,6 +431,7 @@ async function generateDescription(tags: string[]): Promise<string> {
   const modelId =
     process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let payload: any;
 
   // Different payload formats for different model families

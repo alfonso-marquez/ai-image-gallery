@@ -2,6 +2,22 @@ import { getImages, createImage, updateImage, deleteImage } from "@/lib/images";
 import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+interface ImageWithMetadata {
+  id: number | string;
+  filename?: string;
+  name?: string;
+  metadata?: {
+    description?: string;
+    tags?: string[];
+    colors?: string[];
+  };
+}
+
+interface ScoredImage {
+  img: ImageWithMetadata;
+  score: number;
+}
+
 const GET = async (request: NextRequest) => {
   const supabase = await createClient();
   const {
@@ -26,7 +42,7 @@ const GET = async (request: NextRequest) => {
           `
           *,
           metadata:image_metadata(*)
-        `,
+        `
         )
         .eq("user_id", user.id)
         .eq("id", Number(idParam))
@@ -43,14 +59,14 @@ const GET = async (request: NextRequest) => {
     // 1) Text search by q
     if (q) {
       const lower = q.toLowerCase();
-      const filtered = images.filter((img: any) => {
+      const filtered = images.filter((img: ImageWithMetadata) => {
         const desc = (img.metadata?.description || "").toLowerCase();
         const fname = (
           (img.filename ?? img.name ?? "") as string
         ).toLowerCase();
         const tagMatch = Array.isArray(img.metadata?.tags)
           ? img.metadata.tags.some((t: string) =>
-              t?.toLowerCase().includes(lower),
+              t?.toLowerCase().includes(lower)
             )
           : false;
         const nameMatch = fname.includes(lower);
@@ -64,7 +80,7 @@ const GET = async (request: NextRequest) => {
       const norm = color.startsWith("#")
         ? color.toLowerCase()
         : `#${color.toLowerCase()}`;
-      const colorFiltered = images.filter((img: any) => {
+      const colorFiltered = images.filter((img: ImageWithMetadata) => {
         const cols: string[] = img.metadata?.colors || [];
         return cols.some((c: string) => (c || "").toLowerCase() === norm);
       });
@@ -74,17 +90,19 @@ const GET = async (request: NextRequest) => {
     // 3) Similar images by tags/colors/description for a given image id
     if (similarTo) {
       const targetId = Number(similarTo);
-      const target = images.find((img: any) => Number(img.id) === targetId);
+      const target = images.find(
+        (img: ImageWithMetadata) => Number(img.id) === targetId
+      );
       if (!target) {
         return NextResponse.json([], { status: 200 });
       }
 
       const targetTags = new Set<string>(
-        (target.metadata?.tags as string[]) || [],
+        (target.metadata?.tags as string[]) || []
       );
       const targetDesc = (target.metadata?.description || "").toLowerCase();
       const targetWords = new Set<string>(
-        targetDesc.split(/\s+/).filter((w: string) => w.length > 3),
+        targetDesc.split(/\s+/).filter((w: string) => w.length > 3)
       );
 
       const jaccard = (a: Set<string>, b: Set<string>) => {
@@ -96,12 +114,12 @@ const GET = async (request: NextRequest) => {
       };
 
       const scored = images
-        .filter((img: any) => Number(img.id) !== targetId)
-        .map((img: any) => {
+        .filter((img: ImageWithMetadata) => Number(img.id) !== targetId)
+        .map((img: ImageWithMetadata): ScoredImage => {
           const tags = new Set<string>((img.metadata?.tags as string[]) || []);
           const desc = (img.metadata?.description || "").toLowerCase();
           const words = new Set<string>(
-            desc.split(/\s+/).filter((w: string) => w.length > 3),
+            desc.split(/\s+/).filter((w: string) => w.length > 3)
           );
 
           const tagScore = jaccard(targetTags, tags);
@@ -111,12 +129,12 @@ const GET = async (request: NextRequest) => {
           const score = 0.9 * tagScore + 0.1 * descScore;
           return { img, score };
         })
-        .sort((a: any, b: any) => b.score - a.score)
-        .filter((s: any) => s.score > 0.1); // Require minimum 10% similarity
+        .sort((a: ScoredImage, b: ScoredImage) => b.score - a.score)
+        .filter((s: ScoredImage) => s.score > 0.1); // Require minimum 10% similarity
 
       return NextResponse.json(
-        scored.map((s: any) => s.img),
-        { status: 200 },
+        scored.map((s: ScoredImage) => s.img),
+        { status: 200 }
       );
     }
 
@@ -125,7 +143,7 @@ const GET = async (request: NextRequest) => {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 };
@@ -147,7 +165,7 @@ const POST = async (req: Request) => {
   if (!filename || !original_path) {
     return NextResponse.json(
       { error: "Missing required fields: filename and original_path" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -157,14 +175,14 @@ const POST = async (req: Request) => {
       filename,
       original_path,
       user.id,
-      thumbnail_path,
+      thumbnail_path
     );
     console.log("API Route:", data);
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 };
@@ -189,7 +207,7 @@ const PATCH = async (req: Request) => {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 };
@@ -210,7 +228,7 @@ const DELETE = async (req: Request) => {
   if (!id)
     return NextResponse.json(
       { error: "Image id is required" },
-      { status: 400 },
+      { status: 400 }
     );
 
   try {
@@ -219,7 +237,7 @@ const DELETE = async (req: Request) => {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 };

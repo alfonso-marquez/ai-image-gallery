@@ -1,11 +1,15 @@
-'use client'
+"use client";
 
-import { Dropzone, DropzoneContent, DropzoneEmptyState } from '@/components/dropzone'
-import { useSupabaseUpload } from '@/hooks/use-supabase-upload'
-import { createClient } from '@/utils/supabase/client'
-import { useEffect } from 'react'
-import { toast } from 'sonner'
-import { Image } from './types'
+import {
+    Dropzone,
+    DropzoneContent,
+    DropzoneEmptyState,
+} from "@/components/dropzone";
+import { useSupabaseUpload } from "@/hooks/use-supabase-upload";
+import { createClient } from "@/utils/supabase/client";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { Image } from "./types";
 
 interface ImageDropZoneProps {
     onImageCreated?: (image: Image) => void;
@@ -14,34 +18,39 @@ interface ImageDropZoneProps {
 export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
     // Helper: generate 300x300 thumbnail blob from a File
     const generateThumbnail = async (file: File, size = 300): Promise<Blob> => {
-        const img = await createImageBitmap(file)
-        const canvas = document.createElement('canvas')
-        canvas.width = size
-        canvas.height = size
-        const ctx = canvas.getContext('2d')!
+        const img = await createImageBitmap(file);
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d")!;
         // cover fit
-        const scale = Math.max(size / img.width, size / img.height)
-        const newW = img.width * scale
-        const newH = img.height * scale
-        const dx = (size - newW) / 2
-        const dy = (size - newH) / 2
-        ctx.clearRect(0, 0, size, size)
-        ctx.imageSmoothingEnabled = true
-        ctx.imageSmoothingQuality = 'high'
-        ctx.drawImage(img, dx, dy, newW, newH)
+        const scale = Math.max(size / img.width, size / img.height);
+        const newW = img.width * scale;
+        const newH = img.height * scale;
+        const dx = (size - newW) / 2;
+        const dy = (size - newH) / 2;
+        ctx.clearRect(0, 0, size, size);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, dx, dy, newW, newH);
 
-        const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-        const quality = type === 'image/jpeg' ? 0.85 : undefined
+        const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const quality = type === "image/jpeg" ? 0.85 : undefined;
         const blob: Blob = await new Promise((resolve, reject) => {
-            canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Failed to create thumbnail'))), type, quality)
-        })
-        return blob
-    }
+            canvas.toBlob(
+                (b) =>
+                    b ? resolve(b) : reject(new Error("Failed to create thumbnail")),
+                type,
+                quality,
+            );
+        });
+        return blob;
+    };
     const props = useSupabaseUpload({
         bucketName: process.env.NEXT_PUBLIC_SUPABASE_BUCKET!,
-        allowedMimeTypes: ['image/jpeg', 'image/png'],
+        allowedMimeTypes: ["image/jpeg", "image/png"],
         maxFiles: 3,
-        maxFileSize: 1000 * 1000 * 10, // 10MB
+        maxFileSize: 1000 * 1000 * 5, // 5MB
     });
 
     // When upload is successful, create database records
@@ -49,10 +58,12 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
         const createImageRecords = async () => {
             if (props.isSuccess && props.successes.length > 0) {
                 const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
 
                 if (!user) {
-                    console.error('No user logged in');
+                    console.error("No user logged in");
                     return;
                 }
 
@@ -60,7 +71,7 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
 
                 try {
                     for (const successFileName of props.successes) {
-                        const file = props.files.find(f => f.name === successFileName);
+                        const file = props.files.find((f) => f.name === successFileName);
                         if (!file) continue;
 
                         // Get the uploaded file path from the hook
@@ -71,13 +82,22 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
                         }
 
                         // Generate and upload thumbnail (300x300) under thumbnails folder with same filename
-                        const thumbnailBlob = await generateThumbnail(file, 300)
-                        const thumbnailPath = filePath.replace('/originals/', '/thumbnails/')
+                        const thumbnailBlob = await generateThumbnail(file, 300);
+                        const thumbnailPath = filePath.replace(
+                            "/originals/",
+                            "/thumbnails/",
+                        );
                         const { error: thumbUploadError } = await supabase.storage
                             .from(bucket)
-                            .upload(thumbnailPath, thumbnailBlob, { upsert: false, contentType: thumbnailBlob.type })
+                            .upload(thumbnailPath, thumbnailBlob, {
+                                upsert: false,
+                                contentType: thumbnailBlob.type,
+                            });
                         if (thumbUploadError) {
-                            console.error('Thumbnail upload failed:', thumbUploadError.message)
+                            console.error(
+                                "Thumbnail upload failed:",
+                                thumbUploadError.message,
+                            );
                         }
 
                         // Get public URLs using the actual uploaded paths
@@ -89,20 +109,20 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
                             .getPublicUrl(thumbnailPath);
 
                         // Create image record via API
-                        const res = await fetch('/api/images', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                        const res = await fetch("/api/images", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                                 filename: file.name,
                                 original_path: publicUrlData.publicUrl,
-                                thumbnail_path: thumbPublicUrlData.publicUrl
-                            })
+                                thumbnail_path: thumbPublicUrlData.publicUrl,
+                            }),
                         });
 
                         const data = await res.json();
 
                         if (!res.ok) {
-                            throw new Error(data.error || 'Failed to create image record');
+                            throw new Error(data.error || "Failed to create image record");
                         }
 
                         // Call the callback to update parent state
@@ -111,35 +131,40 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
                         }
 
                         // Trigger AI analysis in background (non-blocking)
-                        fetch('/api/analyze-image', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                        fetch("/api/analyze-image", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                                 image_id: data.id,
-                                image_url: publicUrlData.publicUrl
-                            })
+                                image_url: publicUrlData.publicUrl,
+                            }),
                         })
                             .then(async (response) => {
                                 if (!response.ok) {
                                     const errorData = await response.json();
-                                    console.error('AI analysis API error:', response.status, errorData);
+                                    console.error(
+                                        "AI analysis API error:",
+                                        response.status,
+                                        errorData,
+                                    );
                                 } else {
                                     const result = await response.json();
-                                    console.log('AI analysis completed:', result);
+                                    console.log("AI analysis completed:", result);
                                 }
                             })
-                            .catch(err => {
-                                console.error('AI analysis request failed:', err);
+                            .catch((err) => {
+                                console.error("AI analysis request failed:", err);
                                 // Don't show error to user, as upload succeeded
                             });
                     }
 
-                    toast.success('Upload successful', {
+                    toast.success("Upload successful", {
                         description: `${props.successes.length} image(s) uploaded successfully. AI analysis in progress...`,
                     });
                 } catch (err) {
-                    toast.error('Failed to create image records', {
-                        description: err instanceof Error ? err.message : 'Something went wrong',
+                    toast.error("Failed to create image records", {
+                        description:
+                            err instanceof Error ? err.message : "Something went wrong",
                     });
                 }
             }
@@ -155,5 +180,5 @@ export default function ImageDropZone({ onImageCreated }: ImageDropZoneProps) {
                 <DropzoneContent />
             </Dropzone>
         </div>
-    )
+    );
 }

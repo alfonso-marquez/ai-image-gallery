@@ -12,18 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Image } from "./types";
+import { Image as ImageType } from "./types";
 import { toast } from "sonner";
 import ImageDropZone from "./ImageDropZone";
+import Image from "next/image";
 
 export default function ImageClientWrapper({
   initialImages,
   errorMessage,
 }: {
-  initialImages: Image[];
+  initialImages: ImageType[];
   errorMessage: string | null;
 }) {
-  const [images, setImages] = useState<Image[]>(initialImages);
+  const [images, setImages] = useState<ImageType[]>(initialImages);
   const [loading, setLoading] = useState(false);
   const [shouldPoll, setShouldPoll] = useState(false);
   const [query, setQuery] = useState("");
@@ -167,7 +168,7 @@ export default function ImageClientWrapper({
     }
   };
 
-  const handleImageCreated = (newImage: Image) => {
+  const handleImageCreated = (newImage: ImageType) => {
     setLoading(true);
     // Update albums state immutably
     setImages((prev) => [newImage, ...prev]);
@@ -180,7 +181,7 @@ export default function ImageClientWrapper({
     setImages((prev) => prev.filter((photo) => photo.id !== id));
   };
 
-  const handleImageEdit = (photo: Image) => {
+  const handleImageEdit = (photo: ImageType) => {
     setImages((prev) => prev.map((a) => (a.id === photo.id ? photo : a)));
   };
 
@@ -210,11 +211,13 @@ export default function ImageClientWrapper({
               );
               return targetImage ? (
                 <span className="inline-flex items-center gap-2">
-                  <img
+                  <Image
                     src={
                       targetImage.thumbnail_path || targetImage.original_path
                     }
                     alt={targetImage.filename}
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded object-cover border"
                   />
                   <span className="font-medium">{targetImage.filename}</span>
@@ -230,9 +233,9 @@ export default function ImageClientWrapper({
         </div>
       )}
       {/* Search + Color filter row */}
-      <div className="px-6 mb-4 flex items-center gap-3">
+      <div className="px-6 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <Input
-          className="flex-1"
+          className="w-full sm:flex-1 min-w-0"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by tag, description, or filename…"
@@ -252,7 +255,7 @@ export default function ImageClientWrapper({
             }
           }}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px] shrink-0">
             <SelectValue placeholder="Filter by color" />
           </SelectTrigger>
           <SelectContent>
@@ -285,7 +288,7 @@ export default function ImageClientWrapper({
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={handleClearFilters}>
+        <Button variant="outline" size="sm" onClick={handleClearFilters} className="w-full sm:w-auto shrink-0">
           Clear
         </Button>
       </div>
