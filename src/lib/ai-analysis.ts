@@ -184,9 +184,9 @@ export async function generateDescriptionWithBedrock(
   const modelId =
     process.env.BEDROCK_MODEL_ID || "amazon.titan-text-express-v1";
 
-  const prompt = `Write two detailed sentences describing a photo that includes: ${tags.join(
+  const prompt = `Write two factual sentences describing what is actually visible in a photo containing: ${tags.join(
     ", "
-  )}. Use natural language with visual and emotional details, as if writing for a photography exhibition.`;
+  )}. Only describe what is definitively present based on these tags. Do not add imagined elements, mood, or context that cannot be confirmed from the tags alone.`;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let requestBody: Record<string, any>;
@@ -258,7 +258,7 @@ export async function generateDescriptionWithOpenAI(
   // Nudge the model toward two concise sentences to avoid run-ons and truncation
   const prompt = `Write exactly two concise sentences describing a photo that includes: ${tags.join(
     ", "
-  )}. Each sentence must be under 22 words, end with a period, and avoid semicolons. Focus on concrete visual details and mood.`;
+  )}. Each sentence must be under 22 words, end with a period, and avoid semicolons. Only describe what is actually present based on these tags - do not add imagined objects, settings, or mood elements.`;
 
   const client = await getOpenAIClient();
 
@@ -427,7 +427,7 @@ async function generateDescription(tags: string[]): Promise<string> {
 
   const prompt = `Based on these image labels: ${tags.join(
     ", "
-  )}, write a single descriptive sentence about what this image shows. Be concise and natural.`;
+  )}, write a single factual sentence about what this image shows. Only describe what is confirmed by these labels. Do not add imagined objects or context.`;
   const modelId =
     process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
 
