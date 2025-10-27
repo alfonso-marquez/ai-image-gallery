@@ -24,9 +24,8 @@ export default async function Home() {
             Turn uploads into insights
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Upload photos and instantly get AI‑generated tags, a vivid
-            two‑sentence description, and the top three dominant colors.
-            Background analysis with live status updates.
+            Upload photos and instantly get AI‑generated tags, a descriptive
+            summary, and the top three dominant colors.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
