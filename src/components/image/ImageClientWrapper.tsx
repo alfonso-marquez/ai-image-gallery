@@ -168,7 +168,7 @@ export default function ImageClientWrapper({
     if (!activeFilter && query.trim().length === 0) {
       return;
     }
-    
+
     try {
       setIsSearching(true);
       setActiveFilter(null);

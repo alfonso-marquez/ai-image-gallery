@@ -126,17 +126,24 @@ export const OpenAIVisionProvider: AIProvider = {
     const timeout = Number(process.env.OPENAI_TIMEOUT_MS ?? 8000);
     const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
 
-    const prompt = `Write exactly two concise sentences describing a photo that includes: ${tags.join(
+    const prompt = `Describe this photo in exactly two short sentences using only these elements: ${tags.join(
       ", "
-    )}. Each sentence must be under 22 words, end with a period, and avoid semicolons. Only describe what is actually present based on these tags - do not add imagined objects, settings, or mood elements.`;
+    )}. Use this template: "A [subject] is [location] with [object]. The [object] is [position/location]." NO creative words. NO verbs except "is/are/stands". NO adjectives except colors/sizes from tags. Be robotic.`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const completion: any = await withTimeout(
       client.chat.completions.create({
         model,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a factual image describer. You never assume emotions, actions, or add creative flourishes. You describe only what is literally visible.",
+          },
+          { role: "user", content: prompt },
+        ],
         max_tokens: maxTokens,
-        temperature: 0.7,
+        temperature: 0.1,
       }),
       timeout
     );
