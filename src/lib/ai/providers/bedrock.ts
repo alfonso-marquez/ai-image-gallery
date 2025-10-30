@@ -48,8 +48,7 @@ export const BedrockProvider: AIProvider = {
     const maxTokens = Number(process.env.BEDROCK_MAX_TOKENS ?? 60);
     const timeout = Number(process.env.BEDROCK_TIMEOUT_MS ?? 7000);
     const modelId =
-      process.env.BEDROCK_MODEL_ID ||
-      "anthropic.claude-3-haiku-20240307-v1:0";
+      process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
 
     const prompt = `Based on these image labels: ${tags.join(
       ", "
