@@ -279,7 +279,7 @@ Open [http://localhost:3000](http://localhost:3000)
 3. Add environment variables from `.env.local`
 4. Deploy (auto-deploys on push to main)
 
-**Production URL**: https://ai-image-gallery-mu.vercel.app
+**Production URL**: https://ai-image-gallery-alfonso.vercel.app
 
 ### Environment Variables Required in Vercel
 
@@ -342,7 +342,7 @@ _Drag & drop interface with real-time upload progress_
 
 > **Note**: Add actual screenshots to `docs/screenshots/` directory or replace with your deployed URL screenshots
 
-**Live Demo**: https://ai-image-gallery-mu.vercel.app
+**Live Demo**: https://ai-image-gallery-alfonso.vercel.app
 
 ## API routes
 

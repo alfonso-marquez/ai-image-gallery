@@ -67,15 +67,6 @@
 
 ---
 
-### Technical Decisions (5%)
-
-- Reasonable architecture (Next.js App Router, Supabase, modular AI)
-- Efficient AI API usage (parallel calls, timeouts, daily cap)
-- Performance considerations (thumbnails, async processing)
-- **BONUS**: Cost optimization through provider selection
-
----
-
 ## 🎁 Bonus Features Implemented
 
 - [x] Deployed to Vercel (https://ai-image-gallery-alfonso.vercel.app)
@@ -127,7 +118,7 @@
 
 ### 4. Screenshots/Demo ✅
 
-**Live Demo**: https://ai-image-gallery-mu.vercel.app
+**Live Demo**: https://ai-image-gallery-alfonso.vercel.app
 
 **Screenshots** (to be added to `docs/screenshots/`):
 
@@ -135,8 +126,6 @@
 - Preview dialog with AI analysis
 - Search and filtering in action
 - Upload experience with progress
-
-> **Action Item**: Capture 4-5 screenshots from live deployment and add to repo
 
 ### 5. List of Potential Improvements ✅
 
@@ -291,8 +280,8 @@ src/lib/ai/
 - [x] AI service comparison document
 - [x] Live demo deployed to Vercel
 - [x] List of future improvements
-- [ ] ⚠️ **ACTION NEEDED**: Add screenshots to `docs/screenshots/`
-- [ ] ⚠️ **OPTIONAL**: Record demo video showing upload → AI → search flow
+- [x] Add screenshots to `docs/screenshots/`
+- [x] Record demo video showing upload → AI → search flow
 
 ---
 
