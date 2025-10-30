@@ -1,8 +1,16 @@
+// Legacy file - now delegates to new modular AI system
+// Import the new modular system
+export {
+  analyzeImage as analyzeImageNew,
+  analyzeImageWithUrl,
+} from "./ai/index";
+export type { AIAnalysisResult } from "./ai/types";
+
+// Legacy imports kept for backward compatibility with existing code
 import {
   RekognitionClient,
   DetectLabelsCommand,
   DetectTextCommand,
-  type DetectLabelsCommandInput,
 } from "@aws-sdk/client-rekognition";
 import {
   BedrockRuntimeClient,
@@ -90,6 +98,7 @@ async function getOpenAIClient(): Promise<any> {
   return openaiClient;
 }
 
+// Legacy type export for backward compatibility
 export interface ImageAnalysisResult {
   tags: string[];
   description: string;
@@ -319,10 +328,11 @@ export async function generateDescriptionWithOpenAI(
 // Note: External fallbacks (e.g., Hugging Face) intentionally omitted per project requirements.
 
 /**
- * Analyze image using Amazon Rekognition and Bedrock
- * @param imageBuffer - Image data as Buffer
- * @returns Analysis results with tags, description, and colors
+ * Legacy analyzeImage function - kept for backward compatibility
+ * New code should use analyzeImageNew from ./ai/index
+ * @deprecated Use analyzeImageNew instead
  */
+/*
 export async function analyzeImage(
   imageBuffer: Buffer
 ): Promise<ImageAnalysisResult> {
@@ -347,161 +357,15 @@ export async function analyzeImage(
     throw new Error("Failed to analyze image");
   }
 }
+*/
+
+// Export the new implementation as the default
+export { analyzeImage } from "./ai/index";
 
 /**
- * Detect labels (tags) using Amazon Rekognition
+ * Legacy helper functions kept for backward compatibility with exports
+ * These are now implemented in the new provider system
  */
-async function detectLabels(imageBuffer: Buffer): Promise<string[]> {
-  // Frontend already limits to 5MB
-  const params: DetectLabelsCommandInput = {
-    Image: { Bytes: imageBuffer },
-    MaxLabels: Number(process.env.AI_MAX_LABELS ?? 10),
-    MinConfidence: Number(process.env.AI_MIN_CONFIDENCE ?? 80),
-  };
-
-  const command = new DetectLabelsCommand(params);
-  const response = await rekognitionClient.send(command);
-
-  const tagSet = new Set<string>();
-  for (const label of response.Labels || []) {
-    if (label.Name) tagSet.add(normalizeTag(label.Name));
-    if (includeParentTags() && label.Parents) {
-      for (const p of label.Parents) {
-        if (p?.Name) tagSet.add(normalizeTag(p.Name));
-      }
-    }
-  }
-  const excludePerson =
-    (process.env.AI_EXCLUDE_PERSON_FROM_TAGS ?? "false").toLowerCase() ===
-    "true";
-  return Array.from(tagSet).filter((t) =>
-    excludePerson ? t.toLowerCase() !== "person" : true
-  );
-}
-
-/**
- * Extract dominant colors using Amazon Rekognition
- */
-async function extractDominantColors(imageBuffer: Buffer): Promise<string[]> {
-  // Frontend already limits to 5MB
-  const params: DetectLabelsCommandInput = {
-    Image: { Bytes: imageBuffer },
-    Features: ["IMAGE_PROPERTIES"],
-  };
-
-  const command = new DetectLabelsCommand(params);
-  const response = await rekognitionClient.send(command);
-
-  const dominant = (response.ImageProperties?.DominantColors || [])
-    .slice()
-    .sort((a, b) => (b.PixelPercent || 0) - (a.PixelPercent || 0));
-
-  const seen = new Set<string>();
-  const hexes: string[] = [];
-  for (const c of dominant) {
-    const r = Math.round(c.Red || 0);
-    const g = Math.round(c.Green || 0);
-    const b = Math.round(c.Blue || 0);
-    const hex = rgbToHex(r, g, b);
-    if (!seen.has(hex)) {
-      seen.add(hex);
-      hexes.push(hex);
-    }
-  }
-
-  return hexes;
-}
-
-/**
- * Generate image description using AWS Bedrock (Claude)
- */
-async function generateDescription(tags: string[]): Promise<string> {
-  const bedrockEnabled =
-    (process.env.BEDROCK_ENABLED ?? "true").toLowerCase() === "true";
-
-  // If Bedrock is disabled or there are no tags, return a deterministic fallback
-  if (!bedrockEnabled || tags.length === 0) {
-    const top = tags.slice(0, 3);
-    return top.length > 0 ? `A photo of ${top.join(", ")}.` : "A photo.";
-  }
-
-  const prompt = `Based on these image labels: ${tags.join(
-    ", "
-  )}, write a single factual sentence about what this image shows. Only describe what is confirmed by these labels. Do not add imagined objects or context.`;
-  const modelId =
-    process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let payload: any;
-
-  // Different payload formats for different model families
-  if (modelId.startsWith("anthropic.claude")) {
-    // Anthropic Messages API format
-    payload = {
-      anthropic_version: "bedrock-2023-05-31",
-      max_tokens: Number(process.env.BEDROCK_MAX_TOKENS ?? 60),
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    };
-  } else if (modelId.startsWith("amazon.titan-text")) {
-    // Amazon Titan Text API format
-    payload = {
-      inputText: prompt,
-      textGenerationConfig: {
-        maxTokenCount: Number(process.env.BEDROCK_MAX_TOKENS ?? 60),
-        temperature: 0.7,
-        topP: 0.9,
-      },
-    };
-  } else {
-    // Generic fallback
-    payload = {
-      prompt: prompt,
-      max_tokens: Number(process.env.BEDROCK_MAX_TOKENS ?? 60),
-    };
-  }
-
-  const command = new InvokeModelCommand({
-    modelId: modelId,
-    contentType: "application/json",
-    accept: "application/json",
-    body: JSON.stringify(payload),
-  });
-
-  try {
-    const response = await withTimeout(
-      bedrockClient.send(command),
-      Number(process.env.BEDROCK_TIMEOUT_MS ?? 7000)
-    );
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-
-    // Parse response based on model type
-    let description: string;
-    if (modelId.startsWith("anthropic.claude")) {
-      description = responseBody.content[0].text.trim();
-    } else if (modelId.startsWith("amazon.titan-text")) {
-      description = responseBody.results[0].outputText.trim();
-    } else {
-      description =
-        responseBody.text?.trim() || responseBody.completion?.trim() || "";
-    }
-
-    return description || `An image containing ${tags.slice(0, 3).join(", ")}.`;
-  } catch (error) {
-    console.error("Error generating description with Bedrock:", error);
-    // Fallback to simple description
-    return `An image containing ${tags.slice(0, 3).join(", ")}.`;
-  }
-}
 
 /**
  * Convert RGB to hex color code

@@ -97,13 +97,16 @@ export default function ImageClientWrapper({
           q.length > 0
             ? `/api/images?q=${encodeURIComponent(q)}`
             : "/api/images";
+        console.log("[Search] Fetching:", url);
         const res = await fetch(url);
+        console.log("[Search] Response status:", res.status, res.ok);
         if (res.ok) {
           const list = await res.json();
+          console.log("[Search] Results:", list);
           setImages(list);
         }
       } catch (e) {
-        console.error("Search failed", e);
+        console.error("[Search] Search failed", e);
       } finally {
         setIsSearching(false);
       }
@@ -123,15 +126,17 @@ export default function ImageClientWrapper({
       setSimilarTargetImage(targetImg || null);
       setActiveFilter({ type: "similar", value: imageId });
       setQuery("");
-      const res = await fetch(
-        `/api/images?similarTo=${encodeURIComponent(String(imageId))}`,
-      );
+      const url = `/api/images?similarTo=${encodeURIComponent(String(imageId))}`;
+      console.log("[Similar] Fetching:", url);
+      const res = await fetch(url);
+      console.log("[Similar] Response status:", res.status, res.ok);
       if (res.ok) {
         const list = await res.json();
+        console.log("[Similar] Results:", list);
         setImages(list);
       }
     } catch (e) {
-      console.error("Find similar failed", e);
+      console.error("[Similar] Find similar failed", e);
     } finally {
       setIsSearching(false);
     }
@@ -142,13 +147,17 @@ export default function ImageClientWrapper({
       setIsSearching(true);
       setActiveFilter({ type: "color", value: hex });
       setQuery("");
-      const res = await fetch(`/api/images?color=${encodeURIComponent(hex)}`);
+      const url = `/api/images?color=${encodeURIComponent(hex)}`;
+      console.log("[Color] Fetching:", url);
+      const res = await fetch(url);
+      console.log("[Color] Response status:", res.status, res.ok);
       if (res.ok) {
         const list = await res.json();
+        console.log("[Color] Results:", list);
         setImages(list);
       }
     } catch (e) {
-      console.error("Color filter failed", e);
+      console.error("[Color] Color filter failed", e);
     } finally {
       setIsSearching(false);
     }
@@ -160,14 +169,17 @@ export default function ImageClientWrapper({
       setActiveFilter(null);
       setSimilarTargetImage(null);
       setQuery(""); // clear search query as well
+      console.log("[Clear] Fetching all images");
       const res = await fetch("/api/images");
+      console.log("[Clear] Response status:", res.status, res.ok);
       if (res.ok) {
         const list = await res.json();
+        console.log("[Clear] Results:", list);
         setImages(list);
       }
       setShouldPoll(true); // resume polling if needed
     } catch (e) {
-      console.error("Reset filters failed", e);
+      console.error("[Clear] Reset filters failed", e);
     } finally {
       setIsSearching(false);
     }
