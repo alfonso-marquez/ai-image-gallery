@@ -164,6 +164,11 @@ export default function ImageClientWrapper({
   };
 
   const handleClearFilters = async () => {
+    // Don't do anything if no filters are active and search is empty
+    if (!activeFilter && query.trim().length === 0) {
+      return;
+    }
+    
     try {
       setIsSearching(true);
       setActiveFilter(null);
